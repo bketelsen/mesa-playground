@@ -20,6 +20,24 @@ describe('GET /health', () => {
     assert.equal(body.status, 'ok');
     assert.ok(body.timestamp);
   });
+
+  it('includes uptime as a number', async () => {
+    const res = await fetch(`${BASE}/health`);
+    const body = await res.json();
+    assert.ok(typeof body.uptime === 'number', 'uptime should be a number');
+  });
+
+  it('includes requestCount as a number', async () => {
+    const res = await fetch(`${BASE}/health`);
+    const body = await res.json();
+    assert.ok(typeof body.requestCount === 'number', 'requestCount should be a number');
+  });
+
+  it('includes activeConnections as a number', async () => {
+    const res = await fetch(`${BASE}/health`);
+    const body = await res.json();
+    assert.ok(typeof body.activeConnections === 'number', 'activeConnections should be a number');
+  });
 });
 
 describe('unknown routes', () => {
