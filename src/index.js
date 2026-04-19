@@ -3,14 +3,16 @@ import { createServer } from 'node:http';
 import { sendError } from './errors.js';
 import { usersRouter } from './users.js';
 import { rateLimiter } from './ratelimit.js';
+import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
 
 const PORT = process.env.PORT || 3000;
 
 const server = createServer(rateLimiter(async (req, res) => {
+  incrementRequests();
   try {
     if (req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString(), ...getMetrics() }));
       return;
     }
 
@@ -25,6 +27,8 @@ const server = createServer(rateLimiter(async (req, res) => {
     sendError(res, 500, 'Internal Server Error');
   }
 }));
+
+trackConnections(server);
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
