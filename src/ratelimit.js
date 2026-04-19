@@ -1,7 +1,8 @@
 import { sendError } from './errors.js';
+import { RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS } from './config.js';
 
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_REQUESTS = 100;
+const WINDOW_MS = RATE_LIMIT_WINDOW_MS;
+const MAX_REQUESTS = RATE_LIMIT_MAX;
 
 const store = new Map(); // ip -> { count, windowStart }
 
