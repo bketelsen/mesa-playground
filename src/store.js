@@ -1,12 +1,22 @@
+import { randomBytes } from 'node:crypto';
+
 // In-memory user store
 let nextId = 1;
 const users = new Map();
+const tokenIndex = new Map();
 
 function createUser(data) {
   const id = String(nextId++);
-  const user = { id, name: data.name, email: data.email };
+  const token = randomBytes(32).toString('hex');
+  const user = { id, name: data.name, email: data.email, token };
   users.set(id, user);
+  tokenIndex.set(token, id);
   return user;
+}
+
+function getUserByToken(token) {
+  const id = tokenIndex.get(token);
+  return id ? (users.get(id) ?? null) : null;
 }
 
 function getUser(id) {
@@ -31,7 +41,8 @@ function deleteUser(id) {
 
 function reset() {
   users.clear();
+  tokenIndex.clear();
   nextId = 1;
 }
 
-export { createUser, getUser, listUsers, updateUser, deleteUser, reset };
+export { createUser, getUserByToken, getUser, listUsers, updateUser, deleteUser, reset };

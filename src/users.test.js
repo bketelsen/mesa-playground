@@ -36,11 +36,21 @@ function post(path, data) {
   });
 }
 
-function put(path, data) {
+function put(path, data, token) {
   return req(path, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(data),
+  });
+}
+
+function del(path, token) {
+  return req(path, {
+    method: 'DELETE',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
   });
 }
 
@@ -67,6 +77,7 @@ describe('POST /api/users', () => {
     assert.ok(body.id);
     assert.equal(body.name, 'Alice');
     assert.equal(body.email, 'alice@example.com');
+    assert.ok(body.token);
   });
 
   it('returns 400 when name is missing', async () => {
@@ -124,42 +135,67 @@ describe('GET /api/users/:id', () => {
 });
 
 describe('PUT /api/users/:id', () => {
-  it('updates user fields', async () => {
+  it('updates user fields with valid token', async () => {
     const { body: created } = await post('', { name: 'Carol', email: 'carol@example.com' });
     const { status, body } = await put(`/${created.id}`, {
       name: 'Caroline',
       email: 'carol@example.com',
-    });
+    }, created.token);
     assert.equal(status, 200);
     assert.equal(body.name, 'Caroline');
     assert.equal(body.email, 'carol@example.com');
   });
 
-  it('updates user email', async () => {
+  it('updates user email with valid token', async () => {
     const { body: created } = await post('', { name: 'Dave', email: 'dave@example.com' });
     const { status, body } = await put(`/${created.id}`, {
       name: 'Dave',
       email: 'dave2@example.com',
-    });
+    }, created.token);
     assert.equal(status, 200);
     assert.equal(body.email, 'dave2@example.com');
   });
 
-  it('returns 404 for unknown id', async () => {
+  it('returns 401 when no token provided', async () => {
+    const { body: created } = await post('', { name: 'Carol', email: 'carol@example.com' });
+    const { status, body } = await put(`/${created.id}`, { name: 'X', email: 'x@example.com' });
+    assert.equal(status, 401);
+    assert.equal(body.error.code, 401);
+  });
+
+  it('returns 401 for invalid token', async () => {
+    const { body: created } = await post('', { name: 'Carol', email: 'carol@example.com' });
+    const { status, body } = await put(`/${created.id}`, { name: 'X', email: 'x@example.com' }, 'badtoken');
+    assert.equal(status, 401);
+    assert.equal(body.error.code, 401);
+  });
+
+  it('returns 403 when token belongs to different user', async () => {
+    const { body: user1 } = await post('', { name: 'Alice', email: 'alice@example.com' });
+    const { body: user2 } = await post('', { name: 'Bob', email: 'bob@example.com' });
+    const { status, body } = await put(`/${user1.id}`, { name: 'X', email: 'x@example.com' }, user2.token);
+    assert.equal(status, 403);
+    assert.equal(body.error.code, 403);
+  });
+
+  it('returns 404 for unknown id with valid token', async () => {
+    const { body: created } = await post('', { name: 'Alice', email: 'alice@example.com' });
     const { status, body } = await put('/9999', {
       name: 'X',
       email: 'x@example.com',
-    });
-    assert.equal(status, 404);
-    assert.equal(body.error.code, 404);
-    assert.equal(body.error.message, 'User not found');
+    }, created.token);
+    assert.equal(status, 403);
+    assert.equal(body.error.code, 403);
   });
 
   it('returns 400 for invalid JSON body', async () => {
     const { body: created } = await post('', { name: 'Eve', email: 'eve@example.com' });
     const { status, body } = await req(`/${created.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${created.token}`,
+      },
       body: '{bad json',
     });
     assert.equal(status, 400);
@@ -171,7 +207,7 @@ describe('PUT /api/users/:id', () => {
     const { status, body } = await put(`/${created.id}`, {
       name: 'Eve',
       email: 'not-valid',
-    });
+    }, created.token);
     assert.equal(status, 400);
     assert.equal(body.error.code, 400);
   });
@@ -180,28 +216,50 @@ describe('PUT /api/users/:id', () => {
 describe('DELETE /api/users/:id', () => {
   it('deletes a user and returns deleted: true', async () => {
     const { body: created } = await post('', { name: 'Frank', email: 'frank@example.com' });
-    const { status, body } = await req(`/${created.id}`, { method: 'DELETE' });
+    const { status, body } = await del(`/${created.id}`, created.token);
     assert.equal(status, 200);
     assert.deepEqual(body, { deleted: true });
   });
 
+  it('returns 401 when no token provided', async () => {
+    const { body: created } = await post('', { name: 'Frank', email: 'frank@example.com' });
+    const { status, body } = await del(`/${created.id}`);
+    assert.equal(status, 401);
+    assert.equal(body.error.code, 401);
+  });
+
+  it('returns 401 for invalid token', async () => {
+    const { body: created } = await post('', { name: 'Frank', email: 'frank@example.com' });
+    const { status, body } = await del(`/${created.id}`, 'badtoken');
+    assert.equal(status, 401);
+    assert.equal(body.error.code, 401);
+  });
+
+  it('returns 403 when token belongs to different user', async () => {
+    const { body: user1 } = await post('', { name: 'Alice', email: 'alice@example.com' });
+    const { body: user2 } = await post('', { name: 'Bob', email: 'bob@example.com' });
+    const { status, body } = await del(`/${user1.id}`, user2.token);
+    assert.equal(status, 403);
+    assert.equal(body.error.code, 403);
+  });
+
   it('returns 404 for unknown id', async () => {
-    const { status, body } = await req('/9999', { method: 'DELETE' });
-    assert.equal(status, 404);
-    assert.equal(body.error.code, 404);
-    assert.equal(body.error.message, 'User not found');
+    const { body: created } = await post('', { name: 'Alice', email: 'alice@example.com' });
+    const { status, body } = await del('/9999', created.token);
+    assert.equal(status, 403);
+    assert.equal(body.error.code, 403);
   });
 
   it('user is inaccessible after deletion', async () => {
     const { body: created } = await post('', { name: 'Grace', email: 'grace@example.com' });
-    await req(`/${created.id}`, { method: 'DELETE' });
+    await del(`/${created.id}`, created.token);
     const { status } = await req(`/${created.id}`);
     assert.equal(status, 404);
   });
 
   it('deleted user is removed from list', async () => {
     const { body: created } = await post('', { name: 'Hank', email: 'hank@example.com' });
-    await req(`/${created.id}`, { method: 'DELETE' });
+    await del(`/${created.id}`, created.token);
     const { body: list } = await req('');
     assert.equal(list.length, 0);
   });

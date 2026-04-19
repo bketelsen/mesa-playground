@@ -1,6 +1,7 @@
 import { createUser, getUser, listUsers, updateUser, deleteUser } from './store.js';
 import { validateUser, validatePartialUser } from './validation.js';
 import { sendError } from './errors.js';
+import { requireAuth } from './auth.js';
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
@@ -46,6 +47,7 @@ async function usersRouter(req, res) {
   }
 
   if (id && req.method === 'PUT') {
+    if (!requireAuth(req, res, id)) return;
     let body;
     try { body = await parseBody(req); }
     catch { return sendError(res, 400, 'Invalid JSON'); }
@@ -59,6 +61,7 @@ async function usersRouter(req, res) {
   }
 
   if (id && req.method === 'DELETE') {
+    if (!requireAuth(req, res, id)) return;
     const existed = deleteUser(id);
     if (!existed) return sendError(res, 404, 'User not found');
     return json(res, 200, { deleted: true });
