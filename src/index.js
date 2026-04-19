@@ -4,8 +4,7 @@ import { sendError } from './errors.js';
 import { usersRouter } from './users.js';
 import { rateLimiter } from './ratelimit.js';
 import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
-
-const PORT = process.env.PORT || 3000;
+import { PORT } from './config.js';
 
 const server = createServer(rateLimiter(async (req, res) => {
   incrementRequests();
