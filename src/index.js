@@ -8,6 +8,8 @@ import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
 import { PORT, DRAIN_TIMEOUT_MS } from './config.js';
 import { logger } from './logger.js';
 import { getAlerts } from './retryAlerts.js';
+import { issuesRouter } from './issuesRouter.js';
+import { renderBoard } from './board.js';
 import { correlationId } from './requestContext.js';
 
 let isShuttingDown = false;
@@ -39,6 +41,11 @@ const server = createServer(correlationId(rateLimiter(async (req, res) => {
 
     if (req.url?.startsWith('/api/workblocks')) {
       await workBlocksRouter(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith('/api/v1/issues')) {
+      await issuesRouter(req, res);
       return;
     }
 
