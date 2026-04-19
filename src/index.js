@@ -5,13 +5,26 @@ import { usersRouter } from './users.js';
 import { workBlocksRouter } from './workblocksRouter.js';
 import { rateLimiter } from './ratelimit.js';
 import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
-import { PORT } from './config.js';
+import { PORT, DRAIN_TIMEOUT_MS } from './config.js';
 import { logger } from './logger.js';
 import { getAlerts } from './retryAlerts.js';
+
+let isShuttingDown = false;
 
 const server = createServer(rateLimiter(async (req, res) => {
   incrementRequests();
   try {
+    if (req.url === '/readiness') {
+      if (isShuttingDown) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'draining' }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ready' }));
+      }
+      return;
+    }
+
     if (req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString(), ...getMetrics() }));
@@ -50,8 +63,27 @@ const server = createServer(rateLimiter(async (req, res) => {
 
 trackConnections(server);
 
+function shutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  logger.info({ signal }, 'Graceful shutdown initiated');
+
+  server.close(() => {
+    logger.info('All connections drained; exiting');
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    logger.warn({ drainTimeoutMs: DRAIN_TIMEOUT_MS }, 'Drain timeout reached; forcing exit');
+    process.exit(1);
+  }, DRAIN_TIMEOUT_MS).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
 server.listen(PORT, () => {
   logger.info({ port: PORT }, 'Server running');
 });
 
-export { server };
+export { server, isShuttingDown };
