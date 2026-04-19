@@ -1,0 +1,10 @@
+{
+  "name": "mesa-playground",
+  "version": "0.1.0",
+  "description": "Throwaway project for testing Mesa autonomous agent git operations",
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/**/*.test.js",
+    "start": "node src/index.js"
+  }
+}
