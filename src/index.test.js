@@ -45,7 +45,8 @@ describe('unknown routes', () => {
     const res = await fetch(`${BASE}/not-a-real-route`);
     assert.equal(res.status, 404);
     const body = await res.json();
-    assert.deepEqual(body, { error: { code: 404, message: 'Not Found' } });
+    assert.deepEqual(body.error, { code: 404, message: 'Not Found' });
+    assert.ok(typeof body.requestId === 'string', 'requestId should be present in error body');
   });
 
   it('returns 404 for POST to unknown route', async () => {

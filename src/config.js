@@ -3,3 +3,4 @@ export const RATE_LIMIT_MAX = process.env.RATE_LIMIT_MAX ? Number(process.env.RA
 export const RATE_LIMIT_WINDOW_MS = process.env.RATE_LIMIT_WINDOW_MS ? Number(process.env.RATE_LIMIT_WINDOW_MS) : 15 * 60 * 1000;
 export const RETRY_THRESHOLD = process.env.RETRY_THRESHOLD ? Number(process.env.RETRY_THRESHOLD) : 3;
 export const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
+export const DRAIN_TIMEOUT_MS = process.env.DRAIN_TIMEOUT_MS ? Number(process.env.DRAIN_TIMEOUT_MS) : 30000;

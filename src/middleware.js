@@ -15,7 +15,8 @@ export function requestLogger(handler) {
 
     res.on('finish', () => {
       const ms = Date.now() - start;
-      logger.info({ method, url, status: statusCode, responseTime: ms });
+      const log = req.log ?? logger;
+      log.info({ method, url, status: statusCode, responseTime: ms });
     });
 
     handler(req, res);
