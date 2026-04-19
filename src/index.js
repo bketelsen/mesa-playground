@@ -8,10 +8,11 @@ import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
 import { PORT, DRAIN_TIMEOUT_MS } from './config.js';
 import { logger } from './logger.js';
 import { getAlerts } from './retryAlerts.js';
+import { correlationId } from './requestContext.js';
 
 let isShuttingDown = false;
 
-const server = createServer(rateLimiter(async (req, res) => {
+const server = createServer(correlationId(rateLimiter(async (req, res) => {
   incrementRequests();
   try {
     if (req.url === '/readiness') {
@@ -59,7 +60,7 @@ const server = createServer(rateLimiter(async (req, res) => {
     logger.error({ err }, 'Unhandled error');
     sendError(res, 500, 'Internal Server Error');
   }
-}));
+})));
 
 trackConnections(server);
 
