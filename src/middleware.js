@@ -1,4 +1,6 @@
 // Request logging middleware — wraps an HTTP handler and logs each request
+import { logger } from './logger.js';
+
 export function requestLogger(handler) {
   return (req, res) => {
     const start = Date.now();
@@ -13,13 +15,7 @@ export function requestLogger(handler) {
 
     res.on('finish', () => {
       const ms = Date.now() - start;
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        method,
-        url,
-        status: statusCode,
-        responseTime: ms,
-      }));
+      logger.info({ method, url, status: statusCode, responseTime: ms });
     });
 
     handler(req, res);

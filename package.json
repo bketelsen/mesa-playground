@@ -6,5 +6,8 @@
   "scripts": {
     "test": "node --test src/**/*.test.js",
     "start": "node src/index.js"
+  },
+  "dependencies": {
+    "pino": "^9.0.0"
   }
 }

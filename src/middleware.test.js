@@ -1,7 +1,8 @@
-import { describe, it, mock } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { requestLogger } from './middleware.js';
+import { logger } from './logger.js';
 
 function makeRes(statusToWrite) {
   const res = new EventEmitter();
@@ -23,8 +24,12 @@ describe('requestLogger', () => {
 
   it('logs correct fields on finish', () => {
     const logged = [];
-    const orig = console.log;
-    console.log = (msg) => logged.push(JSON.parse(msg));
+    // Intercept pino logger.info calls
+    const origInfo = logger.info.bind(logger);
+    logger.info = (obj, ...args) => {
+      logged.push(typeof obj === 'object' ? obj : { msg: obj });
+      origInfo(obj, ...args);
+    };
 
     const handler = (req, res) => {
       res.writeHead(201);
@@ -34,14 +39,13 @@ describe('requestLogger', () => {
     const res = makeRes();
     requestLogger(handler)(req, res);
 
-    console.log = orig;
+    logger.info = origInfo;
 
     assert.equal(logged.length, 1);
     const entry = logged[0];
     assert.equal(entry.method, 'POST');
     assert.equal(entry.url, '/items');
     assert.equal(entry.status, 201);
-    assert.ok(typeof entry.timestamp === 'string');
     assert.ok(typeof entry.responseTime === 'number');
   });
 });

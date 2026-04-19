@@ -6,6 +6,7 @@ import { workBlocksRouter } from './workblocksRouter.js';
 import { rateLimiter } from './ratelimit.js';
 import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
 import { PORT } from './config.js';
+import { logger } from './logger.js';
 import { getAlerts } from './retryAlerts.js';
 
 const server = createServer(rateLimiter(async (req, res) => {
@@ -42,7 +43,7 @@ const server = createServer(rateLimiter(async (req, res) => {
 
     sendError(res, 404, 'Not Found');
   } catch (err) {
-    console.error('Unhandled error:', err);
+    logger.error({ err }, 'Unhandled error');
     sendError(res, 500, 'Internal Server Error');
   }
 }));
@@ -50,7 +51,7 @@ const server = createServer(rateLimiter(async (req, res) => {
 trackConnections(server);
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info({ port: PORT }, 'Server running');
 });
 
 export { server };
