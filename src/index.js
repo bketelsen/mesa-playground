@@ -8,6 +8,9 @@ import { incrementRequests, trackConnections, getMetrics } from './metrics.js';
 import { PORT, DRAIN_TIMEOUT_MS } from './config.js';
 import { logger } from './logger.js';
 import { getAlerts } from './retryAlerts.js';
+import { issuesRouter } from './issuesRouter.js';
+import { archetypePatchesRouter } from './archetypePatchesRouter.js';
+import { renderBoard } from './board.js';
 import { correlationId } from './requestContext.js';
 
 let isShuttingDown = false;
@@ -42,6 +45,16 @@ const server = createServer(correlationId(rateLimiter(async (req, res) => {
       return;
     }
 
+    if (req.url?.startsWith('/api/v1/issues')) {
+      await issuesRouter(req, res);
+      return;
+    }
+
+    if (req.url?.startsWith('/api/v1/archetypes')) {
+      await archetypePatchesRouter(req, res);
+      return;
+    }
+
     if (req.url === '/api/v1/retry-alerts') {
       const alerts = getAlerts();
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -50,8 +63,9 @@ const server = createServer(correlationId(rateLimiter(async (req, res) => {
     }
 
     if (req.url === '/dashboard') {
+      const html = renderBoard();
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(`<!DOCTYPE html><html><head><title>Dashboard</title></head><body><h1>Mesa Dashboard</h1></body></html>`);
+      res.end(html);
       return;
     }
 
